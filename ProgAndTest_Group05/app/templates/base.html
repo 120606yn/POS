@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nhà Hàng{% endblock %} — OrderFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --bg2: #141414;
+            --bg3: #1a1a1a;
+            --card: #1e1e1e;
+            --border: #2a2a2a;
+            --border2: #333;
+            --accent: #e8a020;
+            --accent2: #f0b840;
+            --red: #e84040;
+            --green: #28c76f;
+            --blue: #4e9af1;
+            --purple: #a06ee8;
+            --text: #f0f0f0;
+            --text2: #7c7c7c;
+            --text3: #ffffff;
+            --sidebar: 240px;
+            --radius: 12px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .layout { display: flex; min-height: 100vh; }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--sidebar);
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: .3s;
+        }
+        .sidebar-logo {
+            padding: 24px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            color: var(--accent);
+            letter-spacing: .5px;
+        }
+        .logo-sub { font-size: 11px; color: var(--text3); margin-top: 2px; letter-spacing: 2px; text-transform: uppercase; }
+        
+        .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-label { font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; padding: 0 8px 8px; }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 8px;
+            color: var(--text2); text-decoration: none;
+            font-size: 14px; font-weight: 500;
+            transition: all .2s; margin-bottom: 2px;
+            cursor: pointer; border: none; background: none; width: 100%;
+        }
+        .nav-item:hover { background: var(--bg3); color: var(--text); }
+        .nav-item.active { background: rgba(232,160,32,.12); color: var(--accent); }
+        .nav-item i { width: 18px; text-align: center; font-size: 15px; }
+        .nav-badge {
+            margin-left: auto; background: var(--red);
+            color: white; font-size: 10px; font-weight: 700;
+            padding: 2px 7px; border-radius: 20px; min-width: 20px; text-align: center;
+        }
+        
+        .sidebar-user {
+            padding: 16px; border-top: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .user-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px; flex-shrink: 0;
+        }
+        .user-info { flex: 1; overflow: hidden; }
+        .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-role { font-size: 11px; color: var(--text3); }
+        .logout-btn { color: var(--text3); font-size: 14px; cursor: pointer; text-decoration: none; padding: 4px; }
+        .logout-btn:hover { color: var(--red); }
+
+        /* MAIN CONTENT */
+        .main {
+            margin-left: var(--sidebar);
+            flex: 1; display: flex; flex-direction: column; min-height: 100vh;
+        }
+        .topbar {
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 60px; display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .page-title { font-size: 16px; font-weight: 700; }
+        .topbar-actions { display: flex; align-items: center; gap: 12px; }
+        
+        .content { padding: 24px; flex: 1; }
+
+        /* CARDS */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .card-title { font-size: 15px; font-weight: 700; }
+
+        /* STAT CARDS */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px;
+            position: relative; overflow: hidden;
+        }
+        .stat-card::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--accent-color, var(--accent));
+        }
+        .stat-label { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: 800; color: var(--accent-color, var(--text)); }
+        .stat-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 32px; opacity: .1; }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 9px 16px; border-radius: 8px; border: none;
+            font-family: inherit; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all .2s; text-decoration: none;
+        }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-primary:hover { background: var(--accent2); }
+        .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+        .btn-secondary:hover { background: var(--border); }
+        .btn-danger { background: rgba(232,64,64,.15); color: var(--red); border: 1px solid rgba(232,64,64,.3); }
+        .btn-danger:hover { background: var(--red); color: white; }
+        .btn-success { background: rgba(40,199,111,.15); color: var(--green); border: 1px solid rgba(40,199,111,.3); }
+        .btn-success:hover { background: var(--green); color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-icon { padding: 8px; border-radius: 8px; }
+
+        /* STATUS BADGES */
+        .badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+        .badge-pending { background: rgba(232,160,32,.15); color: var(--accent); }
+        .badge-cooking { background: rgba(232,64,64,.15); color: var(--red); }
+        .badge-ready { background: rgba(40,199,111,.15); color: var(--green); }
+        .badge-paid { background: rgba(78,154,241,.15); color: var(--blue); }
+        .badge-cancelled { background: rgba(100,100,100,.15); color: var(--text3); }
+
+        /* TABLE */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,.02); }
+
+        /* FORMS */
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; letter-spacing: .5px; }
+        .form-control {
+            width: 100%; padding: 10px 14px;
+            background: var(--bg3); border: 1px solid var(--border2);
+            color: var(--text); border-radius: 8px; font-family: inherit; font-size: 14px;
+            transition: border-color .2s;
+        }
+        .form-control:focus { outline: none; border-color: var(--accent); }
+        select.form-control { cursor: pointer; }
+
+        /* ALERTS / FLASH */
+        .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+        .alert-error { background: rgba(232,64,64,.12); border: 1px solid rgba(232,64,64,.3); color: #ff8080; }
+        .alert-success { background: rgba(40,199,111,.12); border: 1px solid rgba(40,199,111,.3); color: #80ffb0; }
+
+        /* TOAST */
+        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+        .toast {
+            background: var(--card); border: 1px solid var(--border2);
+            border-left: 4px solid var(--green);
+            padding: 12px 20px; border-radius: 8px; font-size: 14px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5);
+            animation: slideIn .3s ease;
+        }
+        .toast.error { border-left-color: var(--red); }
+        @keyframes slideIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.7);
+            z-index: 1000; display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--card); border: 1px solid var(--border2);
+            border-radius: 16px; padding: 28px; width: 90%; max-width: 480px;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+
+        /* GRID */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+        /* UTILS */
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .mt-1 { margin-top: 4px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-3 { margin-top: 12px; }
+        .mt-4 { margin-top: 16px; }
+        .mb-4 { margin-bottom: 16px; }
+        .text-sm { font-size: 13px; }
+        .text-xs { font-size: 11px; }
+        .text-muted { color: var(--text2); }
+        .text-accent { color: var(--accent); }
+        .text-success { color: var(--green); }
+        .text-danger { color: var(--red); }
+        .fw-bold { font-weight: 700; }
+        .w-full { width: 100%; }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+    {% if session.staff_id %}
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-text">🍜 Order</div>
+            <div class="logo-sub">Restaurant POS</div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-label">Tổng quan</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+            </div>
+            
+            {% if session.role in ['admin', 'waiter'] %}
+            <div class="nav-section">
+                <div class="nav-label">Đặt món</div>
+                <a href="{{ url_for('new_order') }}" class="nav-item {% if request.endpoint == 'new_order' %}active{% endif %}">
+                    <i class="fas fa-plus-circle"></i> Ghi Order
+                </a>
+                <a href="{{ url_for('orders') }}" class="nav-item {% if request.endpoint in ['orders','order_detail'] %}active{% endif %}">
+                    <i class="fas fa-receipt"></i> Đơn hàng
+                    <span class="nav-badge" id="pending-count">...</span>
+                </a>
+            </div>
+            {% endif %}
+            
+            {% if session.role in ['admin', 'kitchen'] %}
+            <div class="nav-section">
+                <div class="nav-label">Bếp</div>
+                <a href="{{ url_for('kitchen') }}" class="nav-item {% if request.endpoint == 'kitchen' %}active{% endif %}">
+                    <i class="fas fa-fire"></i> Màn hình bếp
+                </a>
+            </div>
+            {% endif %}
+            
+            <div class="nav-section">
+                <div class="nav-label">Khách hàng</div>
+                <a href="{{ url_for('menu') }}" target="_blank" class="nav-item">
+                    <i class="fas fa-utensils"></i> Xem menu
+                    <i class="fas fa-external-link-alt text-xs" style="margin-left:auto; opacity:.4"></i>
+                </a>
+            </div>
+            
+            {% if session.role == 'admin' %}
+            <div class="nav-section">
+                <div class="nav-label">Quản trị</div>
+                <a href="{{ url_for('admin_menu') }}" class="nav-item {% if request.endpoint in ['admin_menu'] %}active{% endif %}">
+                    <i class="fas fa-book-open"></i> Quản lý Menu
+                </a>
+                <a href="{{ url_for('admin_staff') }}" class="nav-item {% if request.endpoint == 'admin_staff' %}active{% endif %}">
+                    <i class="fas fa-users"></i> Nhân viên
+                </a>
+                <a href="{{ url_for('admin_reports') }}" class="nav-item {% if request.endpoint == 'admin_reports' %}active{% endif %}">
+                    <i class="fas fa-chart-bar"></i> Báo cáo
+                </a>
+            </div>
+            {% endif %}
+        </nav>
+        
+        <div class="sidebar-user">
+            <div class="user-avatar">{{ session.staff_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.staff_name }}</div>
+                <div class="user-role">{{ {'admin':'Quản trị','waiter':'Nhân viên','kitchen':'Bếp'}[session.role] }}</div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="logout-btn" title="Đăng xuất"><i class="fas fa-sign-out-alt"></i></a>
+        </div>
+    </aside>
+    {% endif %}
+
+    <main class="main" {% if not session.staff_id %}style="margin-left:0"{% endif %}>
+        {% if session.staff_id %}
+        <div class="topbar">
+            <div class="page-title">{% block page_title %}{% endblock %}</div>
+            <div class="topbar-actions">
+                <span class="text-sm text-muted" id="current-time"></span>
+                {% block topbar_actions %}{% endblock %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="content">
+            {% for msg in get_flashed_messages(with_categories=True) %}
+            <div class="alert alert-{{ msg[0] }}"><i class="fas fa-{% if msg[0]=='error' %}exclamation-circle{% else %}check-circle{% endif %}"></i> {{ msg[1] }}</div>
+            {% endfor %}
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// Time display
+function updateTime() {
+    const el = document.getElementById('current-time');
+    if (el) el.textContent = new Date().toLocaleString('vi-VN', {hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'});
+}
+updateTime(); setInterval(updateTime, 60000);
+
+// Toast
+function toast(msg, type='success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = 'toast' + (type === 'error' ? ' error' : '');
+    t.innerHTML = `<i class="fas fa-${type==='error'?'times-circle':'check-circle'}"></i> ${msg}`;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+// Pending count badge
+async function updatePendingCount() {
+    const el = document.getElementById('pending-count');
+    if (!el) return;
+    try {
+        const r = await fetch('/api/orders/active');
+        const orders = await r.json();
+        const count = orders.filter(o => o.status === 'pending').length;
+        el.textContent = count;
+        el.style.display = count > 0 ? '' : 'none';
+    } catch(e) {}
+}
+updatePendingCount();
+setInterval(updatePendingCount, 30000);
+
+// Modal helpers
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.addEventListener('click', e => {
+    if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('active');
+});
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

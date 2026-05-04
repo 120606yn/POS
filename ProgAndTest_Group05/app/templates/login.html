@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập — OrderFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #e8a020;
+            --bg: #0d0d0d;
+            --card: #1a1a1a;
+            --border: #2a2a2a;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Animated background */
+        .bg-orbs {
+            position: absolute; inset: 0; pointer-events: none;
+        }
+        .orb {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: .12;
+            animation: float 8s ease-in-out infinite;
+        }
+        .orb1 { width: 500px; height: 500px; background: var(--accent); top: -200px; right: -100px; animation-delay: 0s; }
+        .orb2 { width: 400px; height: 400px; background: #a06ee8; bottom: -150px; left: -100px; animation-delay: -3s; }
+        .orb3 { width: 300px; height: 300px; background: #4e9af1; top: 50%; left: 30%; animation-delay: -5s; }
+        @keyframes float { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-30px) scale(1.05); } }
+
+        /* Grid pattern */
+        body::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image: linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .login-wrap { position: relative; z-index: 1; width: 100%; max-width: 420px; padding: 20px; }
+
+        .login-brand { text-align: center; margin-bottom: 32px; }
+        .brand-icon { font-size: 48px; margin-bottom: 8px; display: block; }
+        .brand-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px; color: var(--accent);
+        }
+        .brand-tagline { font-size: 13px; color: #666; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+
+        .login-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 36px;
+            box-shadow: 0 40px 80px rgba(0,0,0,.6);
+        }
+        .login-title { font-size: 20px; color: #ffffff; font-weight: 700; margin-bottom: 4px; }
+        .login-sub { font-size: 13px; color: #ffffff; margin-bottom: 28px; }
+
+        .alert-error {
+            background: rgba(232,64,64,.1); border: 1px solid rgba(232,64,64,.3);
+            color: #ff8080; padding: 10px 14px; border-radius: 8px;
+            font-size: 13px; margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: #ffffff; margin-bottom: 8px; letter-spacing: .5px; }
+        .input-wrap { position: relative; }
+        .input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #555; font-size: 15px; }
+        .form-control {
+            width: 100%; padding: 12px 14px 12px 42px;
+            background: #111; border: 1px solid #2a2a2a;
+            color: #f0f0f0; border-radius: 10px;
+            font-family: inherit; font-size: 14px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .form-control:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,160,32,.12); }
+        .form-control::placeholder { color: #444; }
+
+        .login-btn {
+            width: 100%; padding: 13px;
+            background: var(--accent); border: none;
+            color: #000; border-radius: 10px;
+            font-family: inherit; font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all .2s; margin-top: 8px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .login-btn:hover { background: #f0b840; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(232,160,32,.3); }
+        .login-btn:active { transform: translateY(0); }
+
+        .login-footer { margin-top: 24px; text-align: center; font-size: 12px; color: #444; }
+        .demo-info { 
+            margin-top: 20px; padding: 14px; background: rgba(232,160,32,.06);
+            border: 1px solid rgba(232,160,32,.15); border-radius: 10px;
+        }
+        .demo-info p { font-size: 12px; color: #fdfdfd; margin-bottom: 8px; }
+        .demo-accounts { display: flex; flex-direction: column; gap: 4px; }
+        .demo-account { font-size: 12px; color: #6d6d6d; }
+        .demo-account strong { color: #c2c2c2; }
+
+        @media (prefers-color-scheme: light) { body { background: #f5f0eb; } }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<div class="bg-orbs">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+</div>
+<div class="login-wrap">
+    <div class="login-brand">
+        <span class="brand-icon">🍜</span>
+        <div class="brand-name">OrderFlow</div>
+        <div class="brand-tagline">Restaurant Management System</div>
+    </div>
+
+    <div class="login-card">
+        <div class="login-title">Xin chào 👋</div>
+        <div class="login-sub">Đăng nhập để tiếp tục làm việc</div>
+
+        {% for cat, msg in get_flashed_messages(with_categories=True) %}
+        <div class="alert-error"><i class="fas fa-exclamation-circle"></i> {{ msg }}</div>
+        {% endfor %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label class="form-label">TÊN ĐĂNG NHẬP</label>
+                <div class="input-wrap">
+                    <i class="fas fa-user"></i>
+                    <input type="text" name="username" class="form-control" placeholder="Nhập tên đăng nhập" required autofocus>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">MẬT KHẨU</label>
+                <div class="input-wrap">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" name="password" class="form-control" placeholder="Nhập mật khẩu" required>
+                </div>
+            </div>
+            <button type="submit" class="login-btn">
+                <i class="fas fa-sign-in-alt"></i> Đăng nhập
+            </button>
+        </form>
+
+        <div class="demo-info">
+            <p><i class="fas fa-info-circle"></i> Tài khoản demo (mật khẩu: <strong>123456</strong>)</p>
+            <div class="demo-accounts">
+                <div class="demo-account"><strong>admin</strong> — Quản trị viên (toàn quyền)</div>
+                <div class="demo-account"><strong>waiter1</strong> — Nhân viên phục vụ</div>
+                <div class="demo-account"><strong>kitchen1</strong> — Nhân viên bếp</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="login-footer">©Group 05's System</div>
+</div>
+</body>
+</html>

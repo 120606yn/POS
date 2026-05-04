@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Quản lý Menu{% endblock %}
+{% block page_title %}<i class="fas fa-book-open text-accent" style="margin-right:8px"></i>Quản lý Menu{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-primary btn-sm" onclick="openItemModal()">
+    <i class="fas fa-plus"></i> Thêm món mới
+</button>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns:200px 1fr; gap:20px">
+    <!-- Category sidebar -->
+    <div>
+        <div class="card">
+            <div class="card-title mb-4">📂 Danh mục</div>
+            <div style="display:flex; flex-direction:column; gap:4px">
+                <button class="nav-item active" id="filter-all" onclick="filterCategory('all', this)">
+                    🍽️ Tất cả
+                    <span class="nav-badge">{{ items|length }}</span>
+                </button>
+                {% for cat in categories %}
+                <button class="nav-item" id="filter-{{ cat.id }}" onclick="filterCategory('{{ cat.id }}', this)">
+                    {{ cat.icon }} {{ cat.name }}
+                    <span class="nav-badge">{{ items|selectattr('category_id','eq',cat.id)|list|length }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Items grid -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🍜 Danh sách món ăn</div>
+            <input type="text" placeholder="🔍 Tìm kiếm..." id="item-search"
+                   class="form-control" style="width:200px"
+                   oninput="searchItems(this.value)">
+        </div>
+        <div class="table-wrap">
+            <table id="items-table">
+                <thead>
+                    <tr>
+                        <th>Tên món</th>
+                        <th>Danh mục</th>
+                        <th>Mô tả</th>
+                        <th>Giá</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr data-cat="{{ item.category_id }}" data-search="{{ item.name|lower }}">
+                        <td><strong>{{ item.name }}</strong></td>
+                        <td><span class="badge badge-pending">{{ item.cat_name }}</span></td>
+                        <td class="text-sm text-muted" style="max-width:200px">{{ item.description or '—' }}</td>
+                        <td><strong class="text-accent">{{ item.price | currency }}</strong></td>
+                        <td>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer">
+                                <div class="toggle-switch {% if item.is_available %}on{% endif %}" onclick="toggleItem({{ item.id }}, this)">
+                                    <div class="toggle-thumb"></div>
+                                </div>
+                                <span class="text-sm {% if item.is_available %}text-success{% else %}text-muted{% endif %}">
+                                    {% if item.is_available %}Đang bán{% else %}Hết món{% endif %}
+                                </span>
+                            </label>
+                        </td>
+                        <td>
+                            <div class="flex gap-2">
+                                <button class="btn btn-secondary btn-sm btn-icon" title="Chỉnh sửa"
+                                        onclick="openItemModal({{ item.id }}, '{{ item.name|replace("'","\\'")|e }}', '{{ item.description|replace("'","\\'")|e if item.description else '' }}', {{ item.price }}, {{ item.category_id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm btn-icon" title="Xóa"
+                                        onclick="deleteItem({{ item.id }}, '{{ item.name|replace("'","\\'")|e }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Item Modal -->
+<div class="modal-overlay" id="item-modal">
+    <div class="modal">
+        <div class="modal-title" id="modal-title">➕ Thêm món mới</div>
+        <input type="hidden" id="item-id">
+        <div class="form-group">
+            <label class="form-label">TÊN MÓN ĂN *</label>
+            <input type="text" class="form-control" id="item-name" placeholder="Ví dụ: Gà nướng muối ớt">
+        </div>
+        <div class="form-group">
+            <label class="form-label">DANH MỤC *</label>
+            <select class="form-control" id="item-category">
+                {% for cat in categories %}
+                <option value="{{ cat.id }}">{{ cat.icon }} {{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">GIÁ (VNĐ) *</label>
+            <input type="number" class="form-control" id="item-price" placeholder="Ví dụ: 150000" min="0">
+        </div>
+        <div class="form-group">
+            <label class="form-label">MÔ TẢ</label>
+            <textarea class="form-control" id="item-desc" rows="3" placeholder="Mô tả ngắn về món ăn..."></textarea>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button class="btn btn-secondary w-full" onclick="closeModal('item-modal')">Hủy</button>
+            <button class="btn btn-primary w-full" onclick="saveItem()"><i class="fas fa-save"></i> Lưu</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+.toggle-switch {
+    width:40px; height:22px; border-radius:11px;
+    background:var(--border2); position:relative;
+    cursor:pointer; transition:.2s;
+}
+.toggle-switch.on { background:var(--green); }
+.toggle-thumb {
+    position:absolute; top:3px; left:3px;
+    width:16px; height:16px; border-radius:50%;
+    background:white; transition:.2s;
+}
+.toggle-switch.on .toggle-thumb { left:21px; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterCategory(catId, btn) {
+    document.querySelectorAll('[id^="filter-"]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#items-table tbody tr').forEach(row => {
+        row.style.display = (catId === 'all' || row.dataset.cat == catId) ? '' : 'none';
+    });
+}
+
+function searchItems(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('#items-table tbody tr').forEach(row => {
+        row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+    });
+}
+
+function openItemModal(id='', name='', desc='', price='', catId='') {
+    document.getElementById('item-id').value = id;
+    document.getElementById('item-name').value = name;
+    document.getElementById('item-desc').value = desc;
+    document.getElementById('item-price').value = price;
+    document.getElementById('item-category').value = catId || '';
+    document.getElementById('modal-title').textContent = id ? '✏️ Chỉnh sửa món ăn' : '➕ Thêm món mới';
+    openModal('item-modal');
+}
+
+async function saveItem() {
+    const data = {
+        id: document.getElementById('item-id').value || null,
+        name: document.getElementById('item-name').value.trim(),
+        description: document.getElementById('item-desc').value.trim(),
+        price: parseFloat(document.getElementById('item-price').value),
+        category_id: document.getElementById('item-category').value
+    };
+    if (!data.name || !data.price) { toast('Vui lòng điền đầy đủ thông tin!', 'error'); return; }
+    
+    const r = await fetch('/admin/menu/item', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+    });
+    const d = await r.json();
+    if (d.success) { toast('Đã lưu thành công!'); closeModal('item-modal'); setTimeout(() => location.reload(), 500); }
+}
+
+async function deleteItem(id, name) {
+    if (!confirm(`Xóa món "${name}"? Hành động này không thể hoàn tác.`)) return;
+    const r = await fetch(`/admin/menu/item/${id}`, {method:'DELETE'});
+    const d = await r.json();
+    if (d.success) { toast('Đã xóa món ăn!'); setTimeout(() => location.reload(), 500); }
+}
+
+async function toggleItem(id, el) {
+    const r = await fetch(`/admin/menu/toggle/${id}`, {method:'POST'});
+    const d = await r.json();
+    if (d.success) {
+        el.classList.toggle('on');
+        const label = el.nextElementSibling;
+        if (el.classList.contains('on')) {
+            label.textContent = 'Đang bán';
+            label.className = 'text-sm text-success';
+        } else {
+            label.textContent = 'Hết món';
+            label.className = 'text-sm text-muted';
+        }
+    }
+}
+</script>
+{% endblock %}
