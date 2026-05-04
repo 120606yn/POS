@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block title %}Ghi Order{% endblock %}
+{% block page_title %}<i class="fas fa-plus-circle text-accent" style="margin-right:8px"></i>Ghi Order mới{% endblock %}
+
+{% block head %}
+<style>
+.pos-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; height: calc(100vh - 108px); }
+.menu-panel { overflow-y: auto; }
+.cart-panel { display: flex; flex-direction: column; }
+
+.cat-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.cat-tab {
+    padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border2);
+    background: var(--bg3); color: var(--text2); font-size: 13px;
+    cursor: pointer; transition: .2s; font-family: inherit; font-weight: 500;
+}
+.cat-tab:hover, .cat-tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+.menu-search {
+    width: 100%; padding: 10px 16px; background: var(--bg3);
+    border: 1px solid var(--border2); border-radius: 10px;
+    color: var(--text); font-family: inherit; font-size: 14px;
+    margin-bottom: 16px;
+}
+.menu-search:focus { outline: none; border-color: var(--accent); }
+
+.menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.menu-item-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; cursor: pointer;
+    transition: all .2s; position: relative; overflow: hidden;
+}
+.menu-item-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+.menu-item-card.added { border-color: rgba(40,199,111,.5); background: rgba(40,199,111,.04); }
+.item-name { font-size: 14px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
+.item-desc { font-size: 12px; color: var(--text3); margin-bottom: 10px; line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.item-price { font-size: 16px; font-weight: 800; color: var(--accent); }
+.item-add-btn {
+    position: absolute; bottom: 12px; right: 12px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); border: none; color: #000;
+    font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: .2s;
+}
+.item-add-btn:hover { transform: scale(1.1); }
+.item-qty-badge {
+    position: absolute; top: 10px; right: 10px;
+    background: var(--green); color: white; width: 22px; height: 22px;
+    border-radius: 50%; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+}
+
+/* Cart */
+.cart-panel .card { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.cart-header { margin-bottom: 12px; }
+.cart-table-select { margin-bottom: 12px; }
+.cart-items { flex: 1; overflow-y: auto; }
+.cart-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.cart-item:last-child { border-bottom: none; }
+.cart-item-name { flex: 1; font-size: 13px; font-weight: 500; }
+.cart-item-price { font-size: 12px; color: var(--text3); }
+.qty-ctrl { display: flex; align-items: center; gap: 6px; }
+.qty-btn {
+    width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border2);
+    background: var(--bg3); color: var(--text); cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; transition: .15s;
+}
+.qty-btn:hover { background: var(--border2); }
+.qty-num { min-width: 20px; text-align: center; font-weight: 600; font-size: 14px; }
+.remove-btn { color: var(--text3); background: none; border: none; cursor: pointer; padding: 4px; font-size: 14px; }
+.remove-btn:hover { color: var(--red); }
+
+.cart-empty {
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 40px 20px; color: var(--text3);
+}
+.cart-empty i { font-size: 40px; margin-bottom: 10px; opacity: .3; }
+
+.cart-footer { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 8px; }
+.cart-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.cart-total-label { font-size: 14px; color: var(--text2); }
+.cart-total-amount { font-size: 22px; font-weight: 800; color: var(--accent); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-layout">
+    
+    <div class="menu-panel">
+        <input type="text" class="menu-search" id="search-input" placeholder="🔍 Tìm kiếm món ăn...">
+        
+        <div class="cat-tabs">
+            <button class="cat-tab active" data-cat="all" onclick="filterCat(this, 'all')">
+                🍽️ Tất cả
+            </button>
+            {% for cat_id, cat_data in menu_by_cat.items() %}
+            {% if cat_data.items %}
+            <button class="cat-tab" data-cat="{{ cat_id }}" onclick="filterCat(this, '{{ cat_id }}')">
+                {{ get_cat_emoji(cat_data.category.icon) }} {{ cat_data.category.name }}
+            </button>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="menu-grid" id="menu-grid">
+            {% for cat_id, cat_data in menu_by_cat.items() %}
+            {% for item in cat_data['items'] %}
+            <div class="menu-item-card" 
+                 data-id="{{ item.id }}"
+                 data-cat="{{ item.category_id }}"
+                 data-name="{{ item.name }}"
+                 data-price="{{ item.price }}"
+                 data-search="{{ item.name|lower }} {{ item.description|lower if item.description else '' }}"
+                 onclick="addToCart({{ item.id }}, '{{ item.name|replace("'","\\'")|e }}', {{ item.price }})">
+                <div class="item-name">{{ item.name }}</div>
+                {% if item.description %}
+                <div class="item-desc">{{ item.description }}</div>
+                {% endif %}
+                <div class="item-price">{{ item.price | currency }}</div>
+                <button class="item-add-btn" onclick="event.stopPropagation(); addToCart({{ item.id }}, '{{ item.name|replace("'","\\'")|e }}', {{ item.price }})">+</button>
+                <div class="item-qty-badge" id="badge-{{ item.id }}" style="display:none">0</div>
+            </div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+
+    
+    <div class="cart-panel">
+        <div class="card" style="height:100%">
+            <div class="cart-header">
+                <div class="card-title">🛒 Đơn hàng</div>
+            </div>
+            
+            <div class="cart-table-select">
+                <select class="form-control" id="table-select">
+                    <option value="">📍 Chọn bàn (tùy chọn)</option>
+                    {% for t in all_tables %}
+                    <option value="{{ t.id }}" {% if t.status == 'occupied' %}style="color:var(--text3)"{% endif %}>
+                        Bàn {{ t.table_number }}{% if t.status == 'occupied' %} (đang có khách){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="cart-items" id="cart-items">
+                
+                <div class="cart-empty" id="cart-empty" style="display:flex">
+                    <i class="fas fa-shopping-basket"></i>
+                    <div>Chưa có món nào</div>
+                    <div class="text-xs mt-1">Chọn món từ menu để thêm vào đơn</div>
+                </div>
+                <div id="cart-list"></div>
+            </div>
+
+            <div class="cart-footer">
+                <div class="form-group" style="margin-bottom:12px">
+                    <input type="text" class="form-control" id="order-notes" placeholder="📝 Ghi chú đơn hàng...">
+                </div>
+                <div class="cart-total">
+                    <span class="cart-total-label">Tổng cộng</span>
+                    <span class="cart-total-amount" id="cart-total">0đ</span>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+                    <button class="btn btn-secondary w-full" onclick="clearCart()">
+                        <i class="fas fa-trash"></i> Xóa tất cả
+                    </button>
+                    <button class="btn btn-danger w-full" id="send-kitchen-btn" onclick="submitAndSend()" style="display:none">
+                        <i class="fas fa-fire"></i> Tạo & Gửi bếp ngay
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Cart state ───────────────────────────────────────────
+const cart = new Map(); // id -> {id, name, price, qty}
+
+function formatCurrency(n) {
+    return parseInt(n).toLocaleString('vi-VN') + 'đ';
+}
+
+// ── Cart operations ──────────────────────────────────────
+function addToCart(id, name, price) {
+    id = String(id);
+    if (cart.has(id)) {
+        cart.get(id).qty += 1;
+    } else {
+        cart.set(id, {id, name, price: parseFloat(price), qty: 1});
+    }
+    renderCart();
+    updateBadge(id);
+}
+
+function updateQty(id, delta) {
+    id = String(id);
+    if (!cart.has(id)) return;
+    const item = cart.get(id);
+    item.qty += delta;
+    if (item.qty <= 0) {
+        cart.delete(id);
+        updateBadge(id);
+    }
+    renderCart();
+    updateBadge(id);
+}
+
+function removeFromCart(id) {
+    id = String(id);
+    cart.delete(id);
+    updateBadge(id);
+    renderCart();
+}
+
+function clearCart() {
+    const ids = [...cart.keys()];
+    cart.clear();
+    ids.forEach(id => updateBadge(id));
+    renderCart();
+}
+
+function updateBadge(id) {
+    id = String(id);
+    const badge = document.getElementById('badge-' + id);
+    const card  = document.querySelector(`.menu-item-card[data-id="${id}"]`);
+    if (!badge) return;
+    const item = cart.get(id);
+    if (item && item.qty > 0) {
+        badge.textContent = item.qty;
+        badge.style.display = 'flex';
+        card?.classList.add('added');
+    } else {
+        badge.style.display = 'none';
+        card?.classList.remove('added');
+    }
+}
+
+function renderCart() {
+    const listEl  = document.getElementById('cart-list');  
+    const emptyEl = document.getElementById('cart-empty');  
+    const totalEl = document.getElementById('cart-total');
+    const sendBtn = document.getElementById('send-kitchen-btn');
+
+    const items = [...cart.values()].filter(i => i.qty > 0);
+
+    if (items.length === 0) {
+        listEl.innerHTML  = '';
+        emptyEl.style.display = 'flex';
+        totalEl.textContent   = '0đ';
+        sendBtn.style.display = 'none';
+        return;
+    }
+
+    emptyEl.style.display = 'none';
+
+    let total = 0;
+    listEl.innerHTML = items.map(item => {
+        const sub = item.price * item.qty;
+        total += sub;
+        return `
+        <div class="cart-item" data-id="${item.id}">
+            <div style="flex:1;min-width:0">
+                <div class="cart-item-name" style="white-space:normal;word-break:break-word">${item.name}</div>
+                <div class="cart-item-price">${formatCurrency(item.price)} × ${item.qty} = <strong>${formatCurrency(sub)}</strong></div>
+            </div>
+            <div class="qty-ctrl">
+                <button class="qty-btn" onclick="updateQty('${item.id}', -1)">−</button>
+                <span class="qty-num">${item.qty}</span>
+                <button class="qty-btn" onclick="updateQty('${item.id}', 1)">+</button>
+            </div>
+            <button class="remove-btn" onclick="removeFromCart('${item.id}')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>`;
+    }).join('');
+
+    totalEl.textContent   = formatCurrency(total);
+    sendBtn.style.display = 'block';
+}
+
+async function submitOrder(sendToKitchen = false) {
+    const items = [...cart.values()].filter(i => i.qty > 0);
+    if (items.length === 0) { toast('Chưa có món nào trong đơn!', 'error'); return; }
+    
+    const payload = {
+        table_id: document.getElementById('table-select').value || null,
+        notes: document.getElementById('order-notes').value,
+        items: items.map(i => ({menu_item_id: String(i.id), price: i.price, quantity: i.qty}))
+    };
+    
+    const r = await fetch('/orders/new', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    
+    if (d.success) {
+        toast(d.message);
+        if (sendToKitchen) {
+            await fetch(`/orders/${d.order_id}/send-kitchen`, {method:'POST'});
+            toast('Đã gửi bếp!');
+        }
+        setTimeout(() => window.location.href = `/orders/${d.order_id}`, 800);
+    } else {
+        toast(d.message, 'error');
+    }
+}
+
+function submitAndSend() { submitOrder(true); }
+
+// Category filter
+function filterCat(btn, catId) {
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    
+    document.querySelectorAll('.menu-item-card').forEach(card => {
+        if (catId === 'all' || card.dataset.cat == catId) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Search
+document.getElementById('search-input').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.cat-tab[data-cat="all"]').classList.add('active');
+    
+    document.querySelectorAll('.menu-item-card').forEach(card => {
+        card.style.display = card.dataset.search.includes(q) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Đơn hàng{% endblock %}
+{% block page_title %}<i class="fas fa-receipt text-accent" style="margin-right:8px"></i>Quản lý đơn hàng{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('new_order') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Ghi Order mới</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="card mb-4">
+    <form method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap">
+        <div>
+            <label class="form-label">TRẠNG THÁI</label>
+            <select name="status" class="form-control" style="width:160px">
+                <option value="all" {% if status_filter=='all' %}selected{% endif %}>Tất cả</option>
+                <option value="pending" {% if status_filter=='pending' %}selected{% endif %}>⏳ Chờ xử lý</option>
+                <option value="cooking" {% if status_filter=='cooking' %}selected{% endif %}>🔥 Đang nấu</option>
+                <option value="ready" {% if status_filter=='ready' %}selected{% endif %}>✅ Sẵn sàng</option>
+                <option value="paid" {% if status_filter=='paid' %}selected{% endif %}>💳 Đã thanh toán</option>
+                <option value="cancelled" {% if status_filter=='cancelled' %}selected{% endif %}>❌ Đã hủy</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label">BÀN</label>
+            <select name="table" class="form-control" style="width:140px">
+                <option value="all">Tất cả bàn</option>
+                {% for t in tables %}
+                <option value="{{ t.id }}" {% if table_filter == t.id|string %}selected{% endif %}>Bàn {{ t.table_number }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">
+            <i class="fas fa-filter"></i> Lọc
+        </button>
+        <a href="{{ url_for('orders') }}" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Xóa lọc
+        </a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">📋 Danh sách đơn hàng <span class="text-muted text-sm">({{ orders|length }} đơn)</span></div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#Mã số</th>
+                    <th>Bàn</th>
+                    <th>Nhân viên</th>
+                    <th>Số món</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Thời gian</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in orders %}
+                <tr>
+                    <td>
+                            <strong class="text-accent">
+                                {% if not o.table_id %}
+                                    #TA{{ o.id }}
+                                {% else %}
+                                    #{{ o.id }}
+                                {% endif %}
+                            </strong>
+                    </td>
+                    <td><strong>{{ o.table_number or 'Mang về' }}</strong></td>
+                    <td class="text-sm text-muted">{{ o.staff_name or '—' }}</td>
+                    <td>{{ o.item_count }}</td>
+                    <td><strong>{{ o.total_amount | currency }}</strong></td>
+                    <td>
+                        <span class="badge badge-{{ o.status }}">
+                            {% if o.status == 'pending' %}⏳ Chờ
+                            {% elif o.status == 'cooking' %}🔥 Đang nấu
+                            {% elif o.status == 'ready' %}✅ Sẵn sàng
+                            {% elif o.status == 'paid' %}💳 Đã TT
+                            {% elif o.status == 'cancelled' %}❌ Hủy
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td class="text-sm text-muted">{{ o.created_at.strftime('%H:%M %d/%m') if o.created_at else '—' }}</td>
+                    <td>
+                        <div class="flex gap-2">
+                            <a href="{{ url_for('order_detail', order_id=o.id) }}" class="btn btn-secondary btn-sm btn-icon">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if o.status == 'pending' %}
+                            <button type="button" class="btn btn-danger btn-sm btn-icon" data-order-id="{{ o.id }}" onclick="sendKitchen(this.dataset.orderId)" title="Gửi bếp">
+                                <i class="fas fa-fire"></i>
+                            </button>
+                            {% elif o.status == 'ready' %}
+                            <button type="button" class="btn btn-success btn-sm" data-order-id="{{ o.id }}" onclick="payOrder(this.dataset.orderId)">
+                                <i class="fas fa-money-bill"></i> TT
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text3)">
+                    <i class="fas fa-inbox" style="font-size:32px; margin-bottom:10px; display:block; opacity:.3"></i>
+                    Không có đơn hàng nào
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Payment modal -->
+<div class="modal-overlay" id="pay-modal">
+    <div class="modal">
+        <div class="modal-title">💳 Thanh toán đơn hàng</div>
+        <input type="hidden" id="pay-order-id">
+        <div class="form-group">
+            <label class="form-label">PHƯƠNG THỨC THANH TOÁN</label>
+            <select class="form-control" id="pay-method">
+                <option value="cash">💵 Tiền mặt</option>
+                <option value="card">💳 Thẻ ngân hàng</option>
+                <option value="transfer">📱 Chuyển khoản</option>
+            </select>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button class="btn btn-secondary w-full" onclick="closeModal('pay-modal')">Hủy</button>
+            <button class="btn btn-primary w-full" onclick="confirmPay()"><i class="fas fa-check"></i> Xác nhận</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function sendKitchen(id) {
+    const r = await fetch(`/orders/${id}/send-kitchen`, {method:'POST'});
+    const d = await r.json();
+    if (d.success) { toast(d.message); setTimeout(() => location.reload(), 600); }
+}
+function payOrder(id) {
+    document.getElementById('pay-order-id').value = id;
+    openModal('pay-modal');
+}
+async function confirmPay() {
+    const id = document.getElementById('pay-order-id').value;
+    const method = document.getElementById('pay-method').value;
+    const r = await fetch(`/orders/${id}/pay`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({payment_method: method})
+    });
+    const d = await r.json();
+    if (d.success) { toast(d.message); closeModal('pay-modal'); setTimeout(() => location.reload(), 600); }
+}
+</script>
+{% endblock %}

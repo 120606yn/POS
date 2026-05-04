@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Đơn #{{ order.id }}{% endblock %}
+{% block page_title %}<i class="fas fa-receipt text-accent" style="margin-right:8px"></i>Chi tiết đơn #{{ order.id }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('orders') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns:1fr 320px; gap:20px">
+    <!-- Order Items -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🧾 Danh sách món đã đặt</div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tên món</th>
+                        <th>Đơn giá</th>
+                        <th>Số lượng</th>
+                        <th>Thành tiền</th>
+                        <th>Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><strong>{{ item.item_name }}</strong></td>
+                        <td>{{ item.unit_price | currency }}</td>
+                        <td><span class="badge badge-pending">× {{ item.quantity }}</span></td>
+                        <td><strong class="text-accent">{{ item.subtotal | currency }}</strong></td>
+                        <td class="text-sm text-muted">{{ item.notes or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" style="text-align:right; font-weight:700; padding:14px">TỔNG CỘNG:</td>
+                        <td style="font-size:20px; font-weight:800; color:var(--accent)">{{ order.total_amount | currency }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Order Info -->
+    <div style="display:flex; flex-direction:column; gap:16px">
+        <div class="card">
+            <div class="card-title mb-4">📋 Thông tin đơn</div>
+            <div style="display:flex; flex-direction:column; gap:12px">
+                <div class="flex justify-between">
+                    <span class="text-muted text-sm">Mã đơn</span>
+                    <strong class="text-accent">#{{ order.id }}</strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted text-sm">Bàn</span>
+                    <strong>{{ order.table_number or 'Mang về' }}</strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted text-sm">Nhân viên</span>
+                    <span>{{ order.staff_name or '—' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted text-sm">Trạng thái</span>
+                    <span class="badge badge-{{ order.status }}">
+                        {% if order.status == 'pending' %}⏳ Chờ xử lý
+                        {% elif order.status == 'cooking' %}🔥 Đang nấu
+                        {% elif order.status == 'ready' %}✅ Sẵn sàng
+                        {% elif order.status == 'paid' %}💳 Đã thanh toán
+                        {% elif order.status == 'cancelled' %}❌ Đã hủy
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted text-sm">Tạo lúc</span>
+                    <span class="text-sm">{{ order.created_at.strftime('%H:%M %d/%m/%Y') if order.created_at else '—' }}</span>
+                </div>
+                {% if order.paid_at %}
+                <div class="flex justify-between">
+                    <span class="text-muted text-sm">Thanh toán</span>
+                    <span class="text-sm text-success">{{ order.paid_at.strftime('%H:%M %d/%m/%Y') }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted text-sm">Phương thức</span>
+                    <span class="text-sm">
+                        {% if order.payment_method == 'cash' %}💵 Tiền mặt
+                        {% elif order.payment_method == 'card' %}💳 Thẻ
+                        {% elif order.payment_method == 'transfer' %}📱 Chuyển khoản
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                {% if order.notes %}
+                <div>
+                    <div class="text-muted text-sm mb-1">Ghi chú</div>
+                    <div style="background:var(--bg3); padding:8px 12px; border-radius:8px; font-size:13px">{{ order.notes }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card">
+            <div class="card-title mb-4">⚡ Thao tác</div>
+            <a href="{{ url_for('new_order') }}" class="btn btn-primary w-full mb-2">
+                <i class="fas fa-plus"></i> Tạo đơn mới
+            </a>
+            {% if order.status not in ['paid', 'cancelled'] %}
+            {% if order.status == 'pending' %}
+            <button class="btn btn-danger w-full mb-2" onclick="sendKitchen()">
+                <i class="fas fa-fire"></i> Gửi xuống bếp
+            </button>
+            {% endif %}
+            {% if order.status == 'ready' %}
+            <button class="btn btn-success w-full mb-2" onclick="openModal('pay-modal')">
+                <i class="fas fa-money-bill-wave"></i> Thanh toán
+            </button>
+            {% endif %}
+            {% if order.status in ['pending', 'cooking'] %}
+            <button class="btn btn-secondary w-full mb-2" onclick="updateStatus('ready')">
+                <i class="fas fa-check"></i> Đánh dấu sẵn sàng
+            </button>
+            {% endif %}
+            <button class="btn btn-danger w-full" onclick="cancelOrder()">
+                <i class="fas fa-times"></i> Hủy đơn
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Print receipt -->
+{% if order.status == 'paid' %}
+<div class="mt-4">
+    <button class="btn btn-secondary" onclick="printReceipt()">
+        <i class="fas fa-print"></i> In hóa đơn
+    </button>
+</div>
+{% endif %}
+
+<!-- Payment Modal -->
+<div class="modal-overlay" id="pay-modal">
+    <div class="modal">
+        <div class="modal-title">💳 Thanh toán</div>
+        <div style="font-size:24px; font-weight:800; color:var(--accent); text-align:center; margin:16px 0">
+            {{ order.total_amount | currency }}
+        </div>
+        <div class="form-group">
+            <label class="form-label">PHƯƠNG THỨC THANH TOÁN</label>
+            <select class="form-control" id="pay-method">
+                <option value="cash">💵 Tiền mặt</option>
+                <option value="card">💳 Thẻ ngân hàng</option>
+                <option value="transfer">📱 Chuyển khoản</option>
+            </select>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button class="btn btn-secondary w-full" onclick="closeModal('pay-modal')">Hủy</button>
+            <button class="btn btn-primary w-full" onclick="confirmPay()"><i class="fas fa-check"></i> Xác nhận</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="application/json" id="order-receipt-items">[
+{%- for item in items %}
+{"name":{{ item.item_name|tojson }},"qty":{{ item.quantity|tojson }},"price":{{ item.unit_price|tojson }},"sub":{{ item.subtotal|tojson }}}{% if not loop.last %},{% endif %}
+{%- endfor %}
+]</script>
+<script>
+async function sendKitchen() {
+    const r = await fetch('/orders/{{ order.id }}/send-kitchen', {method:'POST'});
+    const d = await r.json();
+    if (d.success) { toast(d.message); setTimeout(() => location.reload(), 600); }
+}
+
+async function updateStatus(status) {
+    const r = await fetch('/orders/{{ order.id }}/status', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({status})
+    });
+    const d = await r.json();
+    if (d.success) { toast('Đã cập nhật trạng thái'); setTimeout(() => location.reload(), 600); }
+}
+
+async function cancelOrder() {
+    if (!confirm('Bạn có chắc muốn hủy đơn này?')) return;
+    await updateStatus('cancelled');
+}
+
+async function confirmPay() {
+    const method = document.getElementById('pay-method').value;
+    const r = await fetch('/orders/{{ order.id }}/pay', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({payment_method: method})
+    });
+    const d = await r.json();
+    if (d.success) { toast(d.message); closeModal('pay-modal'); setTimeout(() => location.reload(), 600); }
+}
+
+function printReceipt() {
+    const items = JSON.parse(document.getElementById('order-receipt-items').textContent);
+    const win = window.open('', '_blank');
+    win.document.write(`
+    <html><head><title>Hóa đơn #{{ order.id }}</title>
+    <style>
+        body { font-family: monospace; max-width: 300px; margin: 0 auto; padding: 20px; }
+        .center { text-align: center; }
+        .row { display: flex; justify-content: space-between; }
+        .divider { border-top: 1px dashed #000; margin: 8px 0; }
+        .total { font-size: 18px; font-weight: bold; }
+    </style>
+    </head><body>
+    <div class="center"><h2>🍜 NHÀ HÀNG ORDERFLOW</h2></div>
+    <div class="center">Hóa đơn #{{ order.id }}</div>
+    <div class="center">Bàn: {{ order.table_number or 'Mang về' }}</div>
+    <div class="center">{{ order.paid_at.strftime('%H:%M %d/%m/%Y') if order.paid_at else '' }}</div>
+    <div class="divider"></div>
+    ${items.map(i => `<div class="row"><span>${i.name} x${i.qty}</span><span>${i.sub.toLocaleString('vi-VN')}đ</span></div>`).join('')}
+    <div class="divider"></div>
+    <div class="row total"><span>TỔNG CỘNG</span><span>{{ order.total_amount | currency }}</span></div>
+    <div class="divider"></div>
+    <div class="center">Cảm ơn quý khách!</div>
+    </body></html>`);
+    win.print();
+}
+</script>
+{% endblock %}
